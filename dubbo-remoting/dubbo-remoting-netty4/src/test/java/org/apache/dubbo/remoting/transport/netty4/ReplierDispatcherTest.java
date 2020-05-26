@@ -68,6 +68,7 @@ public class ReplierDispatcherTest {
                 sb.append("(").append(random.nextLong()).append(")");
             Data d = new Data();
             d.setData(sb.toString());
+            System.out.println(client.request(d).get().toString());
             Assertions.assertEquals(client.request(d).get().toString(), "hello world");
         }
         clients.put(Thread.currentThread().getName(), client);
@@ -90,16 +91,23 @@ public class ReplierDispatcherTest {
         exec.awaitTermination(10, TimeUnit.SECONDS);
     }
 
+    void print(Object obj){
+        System.out.println(obj);
+    }
+
     void clientExchangeInfo(int port) throws Exception {
         ExchangeChannel client = Exchangers.connect(URL.valueOf("dubbo://localhost:" + port + "?" + CommonConstants.TIMEOUT_KEY + "=5000"));
         clients.put(Thread.currentThread().getName(), client);
         MockResult result = (MockResult) client.request(new RpcMessage(DemoService.class.getName(), "plus", new Class<?>[]{int.class, int.class}, new Object[]{55, 25})).get();
         Assertions.assertEquals(result.getResult(), 80);
+        print(result.getResult());
         for (int i = 0; i < 100; i++) {
             client.request(new RpcMessage(DemoService.class.getName(), "sayHello", new Class<?>[]{String.class}, new Object[]{"qianlei" + i}));
         }
         for (int i = 0; i < 100; i++) {
             CompletableFuture<Object> future = client.request(new Data());
+
+            print(future.get().toString());
             Assertions.assertEquals(future.get().toString(), "hello world");
         }
     }
