@@ -1,0 +1,5 @@
+first=org.apache.dubbo.mytest.protocol.FirstInvokerProtocol
+second=org.apache.dubbo.mytest.protocol.SecondInvokerProtocol
+adaptive=org.apache.dubbo.mytest.protocol.AdaptiveInvokerProtocol
+firstwraper=org.apache.dubbo.mytest.protocol.FirstWraperInvokerProtocol
+secondwraper=org.apache.dubbo.mytest.protocol.SecondWraperInvokerProtocol

@@ -259,14 +259,16 @@ public class ExtensionLoader<T> {
     public List<T> getActivateExtension(URL url, String[] values, String group) {
         List<T> activateExtensions = new ArrayList<>();
         List<String> names = values == null ? new ArrayList<>(0) : asList(values);
+        // 如果传入的值，没有包括-default，说明不排除框架，默认激活的扩展点
         if (!names.contains(REMOVE_VALUE_PREFIX + DEFAULT_KEY)) {
-            getExtensionClasses();
+            getExtensionClasses(); // 加载具体扩展点类，在加载过程中会把打上@Activate注解的类放到缓存cachedActivates中，其中key为扩展点名，Value为Activate注解
             for (Map.Entry<String, Object> entry : cachedActivates.entrySet()) {
                 String name = entry.getKey();
                 Object activate = entry.getValue();
 
                 String[] activateGroup, activateValue;
 
+                //得到Activate注解上的group和value.
                 if (activate instanceof Activate) {
                     activateGroup = ((Activate) activate).group();
                     activateValue = ((Activate) activate).value();
@@ -276,6 +278,7 @@ public class ExtensionLoader<T> {
                 } else {
                     continue;
                 }
+                //判断是否匹配，如果匹配加到activateExtensions。
                 if (isMatchGroup(group, activateGroup)
                         && !names.contains(name)
                         && !names.contains(REMOVE_VALUE_PREFIX + name)
@@ -285,9 +288,12 @@ public class ExtensionLoader<T> {
             }
             activateExtensions.sort(ActivateComparator.COMPARATOR);
         }
+
+        // 上面的if获取的是满足条件默认激活的扩展点类。这里是URL参数直接指定需要的扩展点放到loadedExtensions
         List<T> loadedExtensions = new ArrayList<>();
         for (int i = 0; i < names.size(); i++) {
             String name = names.get(i);
+
             if (!name.startsWith(REMOVE_VALUE_PREFIX)
                     && !names.contains(REMOVE_VALUE_PREFIX + name)) {
                 if (DEFAULT_KEY.equals(name)) {
@@ -303,6 +309,7 @@ public class ExtensionLoader<T> {
         if (!loadedExtensions.isEmpty()) {
             activateExtensions.addAll(loadedExtensions);
         }
+        // 接着返回默认的激活的扩展点+用户指定的扩展点。
         return activateExtensions;
     }
 
@@ -412,16 +419,18 @@ public class ExtensionLoader<T> {
         if (StringUtils.isEmpty(name)) {
             throw new IllegalArgumentException("Extension name == null");
         }
+        // 如果名称为true，返回默认的扩展点
         if ("true".equals(name)) {
             return getDefaultExtension();
         }
+        //从holder中得到名为name的扩展点
         final Holder<Object> holder = getOrCreateHolder(name);
         Object instance = holder.get();
         if (instance == null) {
-            synchronized (holder) {
+            synchronized (holder) { //这里也是锁定双层判断
                 instance = holder.get();
                 if (instance == null) {
-                    instance = createExtension(name);
+                    instance = createExtension(name); // 创建该扩展点实例，并放入该Holder中
                     holder.set(instance);
                 }
             }
@@ -568,20 +577,21 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     public T getAdaptiveExtension() {
+        //首先cachedAdaptiveInstance用来存放自适应扩展点实例的Holder
         Object instance = cachedAdaptiveInstance.get();
-        if (instance == null) {
+        if (instance == null) { // 如果不存在
             if (createAdaptiveInstanceError != null) {
                 throw new IllegalStateException("Failed to create adaptive instance: " +
                         createAdaptiveInstanceError.toString(),
                         createAdaptiveInstanceError);
             }
 
-            synchronized (cachedAdaptiveInstance) {
-                instance = cachedAdaptiveInstance.get();
+            synchronized (cachedAdaptiveInstance) { //锁住该Holder
+                instance = cachedAdaptiveInstance.get();//再次获取，应为该方法可能是并发环境下，所以锁定双层判断
                 if (instance == null) {
                     try {
-                        instance = createAdaptiveExtension();
-                        cachedAdaptiveInstance.set(instance);
+                        instance = createAdaptiveExtension(); //这里创建一个自适应扩展点实例
+                        cachedAdaptiveInstance.set(instance);// 并放入Holder中
                     } catch (Throwable t) {
                         createAdaptiveInstanceError = t;
                         throw new IllegalStateException("Failed to create adaptive instance: " + t.toString(), t);
@@ -620,6 +630,7 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        // 调用getExtensionClasses 得到扩展点类
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
@@ -627,10 +638,14 @@ public class ExtensionLoader<T> {
         try {
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
+                // 为空，clazz.newInstance()一个实力
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            // 为扩展点setter注入
             injectExtension(instance);
+
+            // 这里,对包裹扩展点进行for循环，然后调用wrapperClass.getConstructor(type).newInstance ，一次循环包裹对象
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
@@ -638,7 +653,7 @@ public class ExtensionLoader<T> {
                 }
             }
             initExtension(instance);
-            return instance;
+            return instance; //接着返回被包裹的实例
         } catch (Throwable t) {
             throw new IllegalStateException("Extension instance (name: " + name + ", class: " +
                     type + ") couldn't be instantiated: " + t.getMessage(), t);
@@ -869,16 +884,20 @@ public class ExtensionLoader<T> {
 
     private void loadClass(Map<String, Class<?>> extensionClasses, java.net.URL resourceURL, Class<?> clazz, String name,
                            boolean overridden) throws NoSuchMethodException {
+        // 防御性编程，看加载的具体实现类是不是扩展点接口的实现类
         if (!type.isAssignableFrom(clazz)) {
             throw new IllegalStateException("Error occurred when loading extension class (interface: " +
                     type + ", class line: " + clazz.getName() + "), class "
                     + clazz.getName() + " is not subtype of interface.");
         }
+        // 如果该类被Adaptive标注，放入缓存cachedAdaptiveClass
         if (clazz.isAnnotationPresent(Adaptive.class)) {
             cacheAdaptiveClass(clazz, overridden);
+            // 如果该类是Wrapper类型，放入缓存cachedWrapperClasses
         } else if (isWrapperClass(clazz)) {
             cacheWrapperClass(clazz);
         } else {
+            //这里判断是否有默认构造函数，
             clazz.getConstructor();
             if (StringUtils.isEmpty(name)) {
                 name = findAnnotationName(clazz);
@@ -995,6 +1014,8 @@ public class ExtensionLoader<T> {
     @SuppressWarnings("unchecked")
     private T createAdaptiveExtension() {
         try {
+            // 步骤非常清晰，首先通过getAdaptiveExtensionClass得到自适应的扩展点的Class,然后调用newInstance得到一个实例
+            //接着调用 injectExtension方法为这个实例注入相关需要的熟悉，通过这个实例的setter方法。
             return injectExtension((T) getAdaptiveExtensionClass().newInstance());
         } catch (Exception e) {
             throw new IllegalStateException("Can't create adaptive extension " + type + ", cause: " + e.getMessage(), e);
@@ -1002,15 +1023,17 @@ public class ExtensionLoader<T> {
     }
 
     private Class<?> getAdaptiveExtensionClass() {
-        getExtensionClasses();
-        if (cachedAdaptiveClass != null) {
+        getExtensionClasses(); // 这里还是通过getExtensionClasses加载扩展类，之后分析
+        if (cachedAdaptiveClass != null) { //当调用完 getExtensionClasses方法后，如果存在自适应的扩展点类，会被赋值给cachedAdaptiveClass，那么直接返回，
             return cachedAdaptiveClass;
         }
+        // 如果没有找到被@Adaptive标注的类，为其创建一个自适应的扩展点类
         return cachedAdaptiveClass = createAdaptiveExtensionClass();
     }
 
     private Class<?> createAdaptiveExtensionClass() {
         String code = new AdaptiveClassCodeGenerator(type, cachedDefaultName).generate();
+        System.out.println(code);
         ClassLoader classLoader = findClassLoader();
         org.apache.dubbo.common.compiler.Compiler compiler = ExtensionLoader.getExtensionLoader(org.apache.dubbo.common.compiler.Compiler.class).getAdaptiveExtension();
         return compiler.compile(code, classLoader);

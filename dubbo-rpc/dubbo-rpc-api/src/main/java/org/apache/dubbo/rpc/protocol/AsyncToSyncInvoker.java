@@ -31,7 +31,7 @@ import java.util.concurrent.TimeUnit;
 
 /**
  * This class will work as a wrapper wrapping outside of each protocol invoker.
- *
+ *  这个类用来包裹协议提供refer出来的Invoker 对象。
  * @param <T>
  */
 public class AsyncToSyncInvoker<T> implements Invoker<T> {
