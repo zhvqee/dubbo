@@ -1,6 +1,7 @@
 package org.apache.dubbo.mytest;
 
 import com.sun.tools.javac.util.Assert;
+import org.apache.dubbo.common.URL;
 import org.apache.dubbo.common.URLBuilder;
 import org.apache.dubbo.common.extension.ExtensionFactory;
 import org.apache.dubbo.common.extension.ExtensionLoader;
@@ -13,6 +14,10 @@ import java.util.List;
 
 public class ExtensionLoaderTest {
 
+    public static void main(String[] args) {
+        String decode = URL.decode("%3A%2F%2F172.18.254.38%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddubbo-demo-annotation-provider%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26metadata-type%3Dremote%26methods%3DsayHello%2CsayHelloAsync%26pid%3D5786%26release%3D%26side%3Dprovider%26timestamp%3D1596780352849");
+        System.out.println(decode);
+    }
 
 
 

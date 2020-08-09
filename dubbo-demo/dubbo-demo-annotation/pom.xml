@@ -38,6 +38,12 @@
         <module>dubbo-demo-annotation-consumer</module>
     </modules>
 
+    <dependencies>
+        <dependency>
+            <groupId>org.apache.dubbo</groupId>
+            <artifactId>dubbo-metadata-report-zookeeper</artifactId>
+        </dependency>
+    </dependencies>
     <build>
         <plugins>
             <plugin>

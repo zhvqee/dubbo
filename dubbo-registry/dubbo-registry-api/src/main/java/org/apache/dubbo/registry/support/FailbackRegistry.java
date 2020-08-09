@@ -99,14 +99,16 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     private void addFailedRegistered(URL url) {
+        //获取该注册URL是否已经存在在注册失败列表里，存在直接返回
         FailedRegisteredTask oldOne = failedRegistered.get(url);
         if (oldOne != null) {
             return;
         }
+        // 否则创建一个失败注册重试任务FailedRegisteredTask，放入failedRegistered中。
         FailedRegisteredTask newTask = new FailedRegisteredTask(url, this);
         oldOne = failedRegistered.putIfAbsent(url, newTask);
         if (oldOne == null) {
-            // never has a retry task. then start a new task for retry.
+            // 然后把该失败注册任务放入daemon线程retryTimer,定式重新注册
             retryTimer.newTimeout(newTask, retryPeriod, TimeUnit.MILLISECONDS);
         }
     }
@@ -228,24 +230,28 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void register(URL url) {
+        // 判断该注册中心能接受的协议
         if (!acceptable(url)) {
             logger.info("URL " + url + " will not be registered to Registry. Registry " + url + " does not accept service of this protocol type.");
             return;
         }
+        // 调用AbstractRegistry的register(),主要是吧注册的URL放入registered集合中，说明该URL已经要被注册
         super.register(url);
-        removeFailedRegistered(url);
-        removeFailedUnregistered(url);
+        removeFailedRegistered(url); // 当前URL需要被注册，所以把它从注册失败列表里移除，因为可能是重试注册。
+        removeFailedUnregistered(url); // 当前URL需要被注册，所以把它从注销失败列表里移除，因为可能是重试注册。
         try {
-            // Sending a registration request to the server side
+            //调用子类的具体doRegister，模板方法
             doRegister(url);
         } catch (Exception e) {
             Throwable t = e;
 
             // If the startup detection is opened, the Exception is thrown directly.
+            // 查看是否check字段是否设置为true.
             boolean check = getUrl().getParameter(Constants.CHECK_KEY, true)
                     && url.getParameter(Constants.CHECK_KEY, true)
                     && !CONSUMER_PROTOCOL.equals(url.getProtocol());
             boolean skipFailback = t instanceof SkipFailbackWrapperException;
+            //如果需要严格检测的话，直接抛异常
             if (check || skipFailback) {
                 if (skipFailback) {
                     t = t.getCause();
@@ -255,7 +261,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
                 logger.error("Failed to register " + url + ", waiting for retry, cause: " + t.getMessage(), t);
             }
 
-            // Record a failed registration request to a failed list, retry regularly
+            // 否则把注册失败的URL 添加到failedRegistered，注册失败列表
             addFailedRegistered(url);
         }
     }

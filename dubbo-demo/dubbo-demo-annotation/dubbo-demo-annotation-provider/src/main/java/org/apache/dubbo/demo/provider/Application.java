@@ -16,13 +16,16 @@
  */
 package org.apache.dubbo.demo.provider;
 
+import org.apache.dubbo.config.MetadataReportConfig;
 import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
-
 import org.springframework.context.annotation.AnnotationConfigApplicationContext;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.context.annotation.PropertySource;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class Application {
     public static void main(String[] args) throws Exception {
@@ -35,11 +38,23 @@ public class Application {
     @EnableDubbo(scanBasePackages = "org.apache.dubbo.demo.provider")
     @PropertySource("classpath:/spring/dubbo-provider.properties")
     static class ProviderConfiguration {
+
+
         @Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
             registryConfig.setAddress("zookeeper://106.52.187.48:2181");
+            Map<String, String> parameters = new HashMap<>();
+            parameters.put("registry_protocol", "zookeeper");
+            registryConfig.setParameters(parameters);
             return registryConfig;
+        }
+
+        @Bean
+        public MetadataReportConfig metadataReportConfig() {
+            MetadataReportConfig metadataReportConfig = new MetadataReportConfig();
+            metadataReportConfig.setAddress("zookeeper://106.52.187.48:2181");
+            return metadataReportConfig;
         }
     }
 }

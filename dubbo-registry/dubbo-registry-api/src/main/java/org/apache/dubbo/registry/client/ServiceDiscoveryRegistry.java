@@ -37,18 +37,7 @@ import org.apache.dubbo.registry.client.metadata.proxy.MetadataServiceProxyFacto
 import org.apache.dubbo.registry.client.selector.ServiceInstanceSelector;
 import org.apache.dubbo.registry.support.FailbackRegistry;
 
-import java.util.ArrayList;
-import java.util.Collection;
-import java.util.Collections;
-import java.util.HashSet;
-import java.util.LinkedHashMap;
-import java.util.LinkedHashSet;
-import java.util.LinkedList;
-import java.util.List;
-import java.util.Map;
-import java.util.Objects;
-import java.util.Set;
-import java.util.SortedSet;
+import java.util.*;
 import java.util.concurrent.locks.Lock;
 import java.util.concurrent.locks.ReadWriteLock;
 import java.util.concurrent.locks.ReentrantReadWriteLock;
@@ -56,25 +45,12 @@ import java.util.function.Supplier;
 import java.util.stream.Collectors;
 
 import static java.lang.String.format;
-import static java.util.Collections.emptyList;
-import static java.util.Collections.emptySet;
-import static java.util.Collections.unmodifiableSet;
+import static java.util.Collections.*;
 import static java.util.stream.Collectors.toSet;
 import static java.util.stream.Stream.of;
 import static org.apache.dubbo.common.URLBuilder.from;
-import static org.apache.dubbo.common.constants.CommonConstants.DUBBO_PROTOCOL;
-import static org.apache.dubbo.common.constants.CommonConstants.GROUP_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.INTERFACE_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.PID_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.PROTOCOL_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.PROVIDER_SIDE;
-import static org.apache.dubbo.common.constants.CommonConstants.SIDE_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.TIMESTAMP_KEY;
-import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
-import static org.apache.dubbo.common.constants.RegistryConstants.PROVIDED_BY;
-import static org.apache.dubbo.common.constants.RegistryConstants.REGISTRY_TYPE_KEY;
-import static org.apache.dubbo.common.constants.RegistryConstants.SERVICE_REGISTRY_TYPE;
-import static org.apache.dubbo.common.constants.RegistryConstants.SUBSCRIBED_SERVICE_NAMES_KEY;
+import static org.apache.dubbo.common.constants.CommonConstants.*;
+import static org.apache.dubbo.common.constants.RegistryConstants.*;
 import static org.apache.dubbo.common.extension.ExtensionLoader.getExtensionLoader;
 import static org.apache.dubbo.common.function.ThrowableAction.execute;
 import static org.apache.dubbo.common.utils.CollectionUtils.isEmpty;
@@ -82,30 +58,43 @@ import static org.apache.dubbo.common.utils.CollectionUtils.isNotEmpty;
 import static org.apache.dubbo.common.utils.StringUtils.isBlank;
 import static org.apache.dubbo.metadata.MetadataService.toURLs;
 import static org.apache.dubbo.registry.client.ServiceDiscoveryFactory.getExtension;
-import static org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataUtils.getExportedServicesRevision;
-import static org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataUtils.getMetadataStorageType;
-import static org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataUtils.getProtocolPort;
+import static org.apache.dubbo.registry.client.metadata.ServiceInstanceMetadataUtils.*;
 
 /**
+ * ServiceDiscoveryRegistry是一个不同于传统的新面向服务的服务注册基于 ServiceDiscovery，它不会直接与外部注册中心交互
+ * 但是当 register(URL)和 ubscribe(URL, NotifyListener) 时，把dubbo的服务导出URL 存储到WritableMetadataService
+ * <p>
+ * <p>
  * Being different to the traditional registry, {@link ServiceDiscoveryRegistry} that is a new service-oriented
  * {@link Registry} based on {@link ServiceDiscovery}, it will not interact in the external registry directly,
  * but store the {@link URL urls} that Dubbo services exported and referenced into {@link WritableMetadataService}
- * when {@link #register(URL)} and {@link #subscribe(URL, NotifyListener)} methods are executed. After that the exported
- * {@link URL urls} can be get from {@link WritableMetadataService#getExportedURLs()} and its variant methods. In contrast,
- * {@link WritableMetadataService#getSubscribedURLs()} method offers the subscribed {@link URL URLs}.
+ * when {@link #register(URL)} and {@link #subscribe(URL, NotifyListener)} methods are executed.
  * <p>
+ * <p>
+ * After that the exported {@link URL urls} can be get from {@link WritableMetadataService#getExportedURLs()} and its variant methods.
+ * In contrast,{@link WritableMetadataService#getSubscribedURLs()} method offers the subscribed {@link URL URLs}.
+ * <p>
+ * <p>
+ * 每个ServiceDiscoveryRegistry 对象都有自己的ServiceDiscovery 实例，
  * Every {@link ServiceDiscoveryRegistry} object has its own {@link ServiceDiscovery} instance that was initialized
- * under {@link #ServiceDiscoveryRegistry(URL) the construction}. As the primary argument of constructor , the
- * {@link URL} of connection the registry decides what the kind of ServiceDiscovery is. Generally, each
+ * under {@link #ServiceDiscoveryRegistry(URL) the construction}.
+ * <p>
+ * As the primary argument of constructor , the * {@link URL} of connection the registry decides what the kind of ServiceDiscovery is. Generally, each
  * protocol associates with a kind of {@link ServiceDiscovery}'s implementation if present, or the
  * {@link FileSystemServiceDiscovery} will be the default one. Obviously, it's also allowed to extend
  * {@link ServiceDiscovery} using {@link SPI the Dubbo SPI}.
  * <p>
+ * <p>
+ * <p>
  * In the {@link #subscribe(URL, NotifyListener) subscription phase}, the {@link ServiceDiscovery} instance will be used
  * to discovery the {@link ServiceInstance service instances} via the {@link ServiceDiscovery#getInstances(String)}.
  * However, the argument of this method requires the service name that the subscribed {@link URL} can't find, thus,
- * {@link ServiceNameMapping} will help to figure out one or more services that exported correlative Dubbo services. If
- * the service names can be found, the exported {@link URL URLs} will be get from the remote {@link MetadataService}
+ * <p>
+ * <p>
+ * {@link ServiceNameMapping} will help to figure out one or more services that exported correlative Dubbo services.
+ * <p>
+ * <p>
+ * If the service names can be found, the exported {@link URL URLs} will be get from the remote {@link MetadataService}
  * being deployed on all {@link ServiceInstance instances} of services. The whole process runs under the
  * {@link #subscribeURLs(URL, NotifyListener, String, Collection)} method. It's very expensive to invoke
  * {@link MetadataService} for each {@link ServiceInstance service instance}, thus {@link ServiceDiscoveryRegistry}

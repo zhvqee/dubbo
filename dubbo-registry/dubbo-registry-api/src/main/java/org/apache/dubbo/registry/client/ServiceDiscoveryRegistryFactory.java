@@ -20,16 +20,15 @@ import org.apache.dubbo.common.URL;
 import org.apache.dubbo.registry.Registry;
 import org.apache.dubbo.registry.support.AbstractRegistryFactory;
 
-import static org.apache.dubbo.common.constants.RegistryConstants.REGISTRY_KEY;
-import static org.apache.dubbo.common.constants.RegistryConstants.SERVICE_REGISTRY_PROTOCOL;
-import static org.apache.dubbo.registry.Constants.DEFAULT_REGISTRY;
+import static org.apache.dubbo.common.constants.RegistryConstants.*;
+import static org.apache.dubbo.registry.Constants.DEFAULT_REGISTRY2;
 
 public class ServiceDiscoveryRegistryFactory extends AbstractRegistryFactory {
 
     @Override
     protected Registry createRegistry(URL url) {
         if (SERVICE_REGISTRY_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
-            String protocol = url.getParameter(REGISTRY_KEY, DEFAULT_REGISTRY);
+            String protocol = url.getParameter(REGISTRY_KEY_PROTOCOL, DEFAULT_REGISTRY2);
             url = url.setProtocol(protocol).removeParameter(REGISTRY_KEY);
         }
         return new ServiceDiscoveryRegistry(url);

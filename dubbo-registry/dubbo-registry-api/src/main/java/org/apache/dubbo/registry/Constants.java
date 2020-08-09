@@ -26,6 +26,10 @@ public interface Constants {
 
     String DEFAULT_REGISTRY = "dubbo";
 
+
+    String DEFAULT_REGISTRY2 = "zookeeper";
+
+
     String REGISTER = "register";
 
     String UNREGISTER = "unregister";
