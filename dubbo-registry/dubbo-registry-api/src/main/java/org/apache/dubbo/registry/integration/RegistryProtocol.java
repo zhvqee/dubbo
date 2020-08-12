@@ -204,6 +204,8 @@ public class RegistryProtocol implements Protocol {
         final OverrideListener overrideSubscribeListener = new OverrideListener(overrideSubscribeUrl, originInvoker);
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
+        logger.info("overrideSubscribeUrl="+overrideSubscribeUrl.toString());
+
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
         //export invoker
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
@@ -253,6 +255,7 @@ public class RegistryProtocol implements Protocol {
     private <T> ExporterChangeableWrapper<T> doLocalExport(final Invoker<T> originInvoker, URL providerUrl) {
         String key = getCacheKey(originInvoker);
 
+        // 这里调用DubboProtocol协议的export方法，即打开一个tcp 连接
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
@@ -640,7 +643,6 @@ public class RegistryProtocol implements Protocol {
 
             doOverrideIfNecessary();
         }
-
         public synchronized void doOverrideIfNecessary() {
             final Invoker<?> invoker;
             if (originInvoker instanceof InvokerDelegate) {

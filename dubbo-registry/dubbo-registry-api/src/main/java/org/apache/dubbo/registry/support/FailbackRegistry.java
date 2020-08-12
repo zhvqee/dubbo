@@ -62,6 +62,10 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     /**
      * The time in milliseconds the retryExecutor will wait
      */
+    /**
+     *
+     * 重试周期
+     */
     private final int retryPeriod;
 
     // Timer for failure retry, regular check if there is a request for failure, and if there is, an unlimited retry
@@ -72,6 +76,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
         this.retryPeriod = url.getParameter(REGISTRY_RETRY_PERIOD_KEY, DEFAULT_REGISTRY_RETRY_PERIOD);
 
         // since the retry task will not be very much. 128 ticks is enough.
+        //集运时间轮转的重试线程器
         retryTimer = new HashedWheelTimer(new NamedThreadFactory("DubboRegistryRetryTimer", true), retryPeriod, TimeUnit.MILLISECONDS, 128);
     }
 
@@ -268,6 +273,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void reExportRegister(URL url) {
+        // 判断该注册中心能接受的协议
         if (!acceptable(url)) {
             logger.info("URL " + url + " will not be registered to Registry. Registry " + url + " does not accept service of this protocol type.");
             return;
@@ -332,17 +338,17 @@ public abstract class FailbackRegistry extends AbstractRegistry {
 
     @Override
     public void subscribe(URL url, NotifyListener listener) {
-        super.subscribe(url, listener);
-        removeFailedSubscribed(url, listener);
+        super.subscribe(url, listener); //添加订阅URL 到subscribed
+        removeFailedSubscribed(url, listener); //首先移除失败订阅failedSubscribed
         try {
             // Sending a subscription request to the server side
-            doSubscribe(url, listener);
+            doSubscribe(url, listener); //子类实现，真正的订阅
         } catch (Exception e) {
             Throwable t = e;
 
-            List<URL> urls = getCacheUrls(url);
+            List<URL> urls = getCacheUrls(url);//得到本地订阅服务的提供者URLS
             if (CollectionUtils.isNotEmpty(urls)) {
-                notify(url, listener, urls);
+                notify(url, listener, urls); //通知
                 logger.error("Failed to subscribe " + url + ", Using cached list: " + urls + " from cache file: " + getUrl().getParameter(FILE_KEY, System.getProperty("user.home") + "/dubbo-registry-" + url.getHost() + ".cache") + ", cause: " + t.getMessage(), t);
             } else {
                 // If the startup detection is opened, the Exception is thrown directly.

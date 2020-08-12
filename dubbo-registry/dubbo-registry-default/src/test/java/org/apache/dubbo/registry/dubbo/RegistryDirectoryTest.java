@@ -77,6 +77,12 @@ import static org.junit.jupiter.api.Assertions.fail;
 @SuppressWarnings({"rawtypes", "unchecked"})
 public class RegistryDirectoryTest {
 
+
+    public static void main(String[] args) {
+        String decode = URL.decode("[override%3A%2F%2F0.0.0.0%2Forg.apache.dubbo.demo.DemoService%3Fcategory%3Dconfigurators%26cluster%3Dfailback%26compatible_config%3Dtrue%26dynamic%3Dfalse%26enabled%3Dtrue%26timeout%3D6000]");
+        System.out.println(decode);
+    }
+
     private static boolean isScriptUnsupported = new ScriptEngineManager().getEngineByName("javascript") == null;
     RegistryFactory registryFactory = ExtensionLoader.getExtensionLoader(RegistryFactory.class).getAdaptiveExtension();
     Protocol protocol = ExtensionLoader.getExtensionLoader(Protocol.class).getAdaptiveExtension();

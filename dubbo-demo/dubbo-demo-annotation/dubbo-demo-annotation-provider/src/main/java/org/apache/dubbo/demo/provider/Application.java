@@ -31,6 +31,11 @@ public class Application {
     public static void main(String[] args) throws Exception {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ProviderConfiguration.class);
         context.start();
+
+       /* ReferSelfProvider bean = context.getBean(ReferSelfProvider.class);
+        bean.sayHello("world");
+*/
+
         System.in.read();
     }
 
@@ -43,7 +48,9 @@ public class Application {
         @Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
+           // registryConfig.setAddress("zookeeper://106.52.187.48:2181?registry-type=service");
             registryConfig.setAddress("zookeeper://106.52.187.48:2181");
+
             Map<String, String> parameters = new HashMap<>();
             parameters.put("registry_protocol", "zookeeper");
             registryConfig.setParameters(parameters);
