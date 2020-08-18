@@ -16,14 +16,17 @@
  */
 package org.apache.dubbo.demo.consumer;
 
+import org.apache.dubbo.config.RegistryConfig;
 import org.apache.dubbo.config.spring.context.annotation.EnableDubbo;
 import org.apache.dubbo.demo.DemoService;
 import org.apache.dubbo.demo.consumer.comp.DemoServiceComponent;
 
-import org.springframework.context.annotation.AnnotationConfigApplicationContext;
-import org.springframework.context.annotation.ComponentScan;
-import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.PropertySource;
+import org.apache.dubbo.registry.Registry;
+import org.springframework.context.annotation.*;
+import org.springframework.web.context.annotation.ApplicationScope;
+
+import java.util.HashMap;
+import java.util.Map;
 
 public class Application {
     /**
@@ -43,6 +46,18 @@ public class Application {
     @PropertySource("classpath:/spring/dubbo-consumer.properties")
     @ComponentScan(value = {"org.apache.dubbo.demo.consumer.comp"})
     static class ConsumerConfiguration {
+
+        @Bean
+        public RegistryConfig registryConfig() {
+            RegistryConfig registryConfig = new RegistryConfig();
+            // registryConfig.setAddress("zookeeper://106.52.187.48:2181?registry-type=service");
+            registryConfig.setAddress("zookeeper://106.52.187.48:2181");
+
+            Map<String, String> parameters = new HashMap<>();
+          //  parameters.put("registry_protocol", "zookeeper");
+            registryConfig.setParameters(parameters);
+            return registryConfig;
+        }
 
     }
 }

@@ -63,9 +63,19 @@ final public class MockInvoker<T> implements Invoker<T> {
         return parseMockValue(mock, null);
     }
 
+    /**
+     *
+     * 这里是mock 为配置return xxxx, mock 值就是xxxx
+     *
+     * @param mock
+     * @param returnTypes
+     * @return
+     * @throws Exception
+     */
     public static Object parseMockValue(String mock, Type[] returnTypes) throws Exception {
         Object value = null;
-        if ("empty".equals(mock)) {
+        //如果是empty
+        if ("empty".equals(mock)) { //返回null
             value = ReflectUtils.getEmptyObject(returnTypes != null && returnTypes.length > 0 ? (Class<?>) returnTypes[0] : null);
         } else if ("null".equals(mock)) {
             value = null;
@@ -73,16 +83,18 @@ final public class MockInvoker<T> implements Invoker<T> {
             value = true;
         } else if ("false".equals(mock)) {
             value = false;
+            //如果配置为 ""  或者 ''
         } else if (mock.length() >= 2 && (mock.startsWith("\"") && mock.endsWith("\"")
                 || mock.startsWith("\'") && mock.endsWith("\'"))) {
+            //得到""，''里面的内容
             value = mock.subSequence(1, mock.length() - 1);
         } else if (returnTypes != null && returnTypes.length > 0 && returnTypes[0] == String.class) {
             value = mock;
         } else if (StringUtils.isNumeric(mock, false)) {
             value = JSON.parse(mock);
-        } else if (mock.startsWith("{")) {
+        } else if (mock.startsWith("{")) { //返回Map
             value = JSON.parseObject(mock, Map.class);
-        } else if (mock.startsWith("[")) {
+        } else if (mock.startsWith("[")) { // 返回List
             value = JSON.parseObject(mock, List.class);
         } else {
             value = mock;
@@ -177,10 +189,14 @@ final public class MockInvoker<T> implements Invoker<T> {
 
     @SuppressWarnings("unchecked")
     public static Object getMockObject(String mockService, Class serviceType) {
+
+        //如果mock =true,default
         if (ConfigUtils.isDefault(mockService)) {
+            // 得到的Mock类名为，XXXXMock
             mockService = serviceType.getName() + "Mock";
         }
 
+        //反射，得到Classs,看这个Mock类是否是serviceType的具体实现类
         Class<?> mockClass = ReflectUtils.forName(mockService);
         if (!serviceType.isAssignableFrom(mockClass)) {
             throw new IllegalStateException("The mock class " + mockClass.getName() +
@@ -188,6 +204,7 @@ final public class MockInvoker<T> implements Invoker<T> {
         }
 
         try {
+            //这验证是否有默认的构造方法
             return mockClass.newInstance();
         } catch (InstantiationException e) {
             throw new IllegalStateException("No default constructor from mock class " + mockClass.getName(), e);

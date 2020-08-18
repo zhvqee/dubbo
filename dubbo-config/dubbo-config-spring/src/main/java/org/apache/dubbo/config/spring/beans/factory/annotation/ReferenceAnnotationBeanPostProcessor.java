@@ -53,7 +53,7 @@ import static org.springframework.util.StringUtils.hasText;
 /**
  * {@link org.springframework.beans.factory.config.BeanPostProcessor} implementation
  * that Consumer service {@link Reference} annotated fields
- *
+ *  处理 DubboReference 注册的BeanPostProcessor
  * @see DubboReference
  * @see Reference
  * @see com.alibaba.dubbo.config.annotation.Reference
@@ -72,12 +72,25 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
      */
     private static final int CACHE_SIZE = Integer.getInteger(BEAN_NAME + ".cache.size", 32);
 
+    /**
+     *
+     * 用来保存ReferenceBean(即被DubboReference注解打上的类的信息收集,每个被DubboReference，都会生成一个ReferecenBean)
+     * key: ReferenceBeanName , value:ReferenceBean
+     */
     private final ConcurrentMap<String, ReferenceBean<?>> referenceBeanCache =
             new ConcurrentHashMap<>(CACHE_SIZE);
 
+    /**
+     *
+     *  需要注入的字段，value 是对应的ReferenceBean
+     */
     private final ConcurrentMap<InjectionMetadata.InjectedElement, ReferenceBean<?>> injectedFieldReferenceBeanCache =
             new ConcurrentHashMap<>(CACHE_SIZE);
 
+    /**
+     *
+     * 需要注入的方法，value 是对应的ReferenceBean
+     */
     private final ConcurrentMap<InjectionMetadata.InjectedElement, ReferenceBean<?>> injectedMethodReferenceBeanCache =
             new ConcurrentHashMap<>(CACHE_SIZE);
 
@@ -125,60 +138,128 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
         return Collections.unmodifiableMap(injectedMethodReferenceBeanCache);
     }
 
+    /**
+     *
+     *
+     * 该方法是个模板方法，用来得到一个需要注入类型的的对象。
+     *
+     * @param attributes ReferenceBean注解属性
+     * @param bean  需要被注入的对象,一般是Spring Bean
+     * @param beanName  需要被注入的对象名
+     * @param injectedType  注入对象的类型
+     * @param injectedElement  注入对象描述元信息
+     * @return
+     * @throws Exception
+     */
+
     @Override
     protected Object doGetInjectedBean(AnnotationAttributes attributes, Object bean, String beanName, Class<?> injectedType,
                                        InjectionMetadata.InjectedElement injectedElement) throws Exception {
         /**
          * The name of bean that annotated Dubbo's {@link Service @Service} in local Spring {@link ApplicationContext}
          */
+        /**
+         *
+         * 得到需要被注入的对象的BeanName,生成规则默认是,查看ServiceBeanNameBuilder.build()
+         * ServiceBean:${interfaceName}:${version}:${group}
+         */
         String referencedBeanName = buildReferencedBeanName(attributes, injectedType);
 
         /**
          * The name of bean that is declared by {@link Reference @Reference} annotation injection
          */
+        /**
+         * 得到引用对象@ReferenceBean的BeanName ,
+         * 如果有Id 就是Id,没有通过generateReferenceBeanName()产生，产生的类名如下：
+         * @Reference(${attributes})${interface}
+         */
         String referenceBeanName = getReferenceBeanName(attributes, injectedType);
 
+        /**
+         * 构建一个ReferenceBean 对象，如果不存在的话。
+         *
+         */
         ReferenceBean referenceBean = buildReferenceBeanIfAbsent(referenceBeanName, attributes, injectedType);
 
+        /**
+         * 判断是否为本地ServiceBean,一般都是远程引用dubbo服务。
+         */
         boolean localServiceBean = isLocalServiceBean(referencedBeanName, referenceBean, attributes);
 
+        /**
+         * 然后注册referenceBean
+         */
         registerReferenceBean(referencedBeanName, referenceBean, attributes, localServiceBean, injectedType);
 
+        /**
+         * 把referenceBean 放入缓存中。
+         */
         cacheInjectedReferenceBean(referenceBean, injectedElement);
 
+        /**
+         *
+         * 通过referenceBean 创建动态代理创建一个injectedType类型的对象。核心，创建一个代理对象，用来代表需要引用远程的Service服务
+         */
         return getOrCreateProxy(referencedBeanName, referenceBean, localServiceBean, injectedType);
     }
 
     /**
      * Register an instance of {@link ReferenceBean} as a Spring Bean
      *
-     * @param referencedBeanName The name of bean that annotated Dubbo's {@link Service @Service} in the Spring {@link ApplicationContext}
-     * @param referenceBean      the instance of {@link ReferenceBean} is about to register into the Spring {@link ApplicationContext}
-     * @param attributes         the {@link AnnotationAttributes attributes} of {@link Reference @Reference}
-     * @param localServiceBean   Is Local Service bean or not
-     * @param interfaceClass     the {@link Class class} of Service interface
+     * 注册referenceBean 到Spring 容器中
+     *
+     * @param referencedBeanName  被@DubboService 标注的服务提供者类名
+     * @param referenceBean      ReferenceBean 对象，由buildReferenceBeanIfAbsent创建
+     * @param attributes        @Reference 注解属性
+     * @param localServiceBean    就是说当前需要注入的类型是否在本地，就是在同一个jvm中，
+     * @param interfaceClass     服务接口
      * @since 2.7.3
      */
     private void registerReferenceBean(String referencedBeanName, ReferenceBean referenceBean,
                                        AnnotationAttributes attributes,
                                        boolean localServiceBean, Class<?> interfaceClass) {
 
+        //得到spring 的工厂
         ConfigurableListableBeanFactory beanFactory = getBeanFactory();
 
+        /**
+         *
+         * 首先得到ReferenceBean 的名称
+         */
         String beanName = getReferenceBeanName(attributes, interfaceClass);
 
+        /**
+         * 如果引用的dubbo服务在同一个jvm 上，直接从BeanFacory工厂上拿到
+         */
         if (localServiceBean) {  // If @Service bean is local one
             /**
              * Get  the @Service's BeanDefinition from {@link BeanFactory}
              * Refer to {@link ServiceAnnotationBeanPostProcessor#buildServiceBeanDefinition}
              */
+            /**
+             * 从工厂中得到服务提供者的BeanDefinnition
+             */
             AbstractBeanDefinition beanDefinition = (AbstractBeanDefinition) beanFactory.getBeanDefinition(referencedBeanName);
+
+            /**
+             *
+             * 然后得到其真正引用的内容，即被@DubboService打上注解的类
+             */
             RuntimeBeanReference runtimeBeanReference = (RuntimeBeanReference) beanDefinition.getPropertyValues().get("ref");
             // The name of bean annotated @Service
+            /**
+             * 然后得到这个服务实现类的BeanName
+             */
             String serviceBeanName = runtimeBeanReference.getBeanName();
             // register Alias rather than a new bean name, in order to reduce duplicated beans
+            /**
+             *  因为本地就已经存在服务提供者，所以直接类名注册关联即可。
+             */
             beanFactory.registerAlias(serviceBeanName, beanName);
         } else { // Remote @Service Bean
+            /**
+             * 如果引用的服务是在远程，并且未注册，则注册referenceBean。
+             */
             if (!beanFactory.containsBean(beanName)) {
                 beanFactory.registerSingleton(beanName, referenceBean);
             }
@@ -272,11 +353,19 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
      */
     private Object getOrCreateProxy(String referencedBeanName, ReferenceBean referenceBean, boolean localServiceBean,
                                     Class<?> serviceInterfaceType) {
+        /**
+         *
+         * 如果是本地就有服务Bean的话。
+         */
         if (localServiceBean) { // If the local @Service Bean exists, build a proxy of Service
+            //通过Proxy.newProxyInstance创建一个新的代理对象，在内部通过applicationContext获取本地Service即可。
             return newProxyInstance(getClassLoader(), new Class[]{serviceInterfaceType},
                     newReferencedBeanInvocationHandler(referencedBeanName));
         } else {
+            //如果是远程Service,判断被引用的服务referencedBeanName是否已经存在在applicationContext上，是的话，直接暴露服务，
+            // 基本上不太可能，因为在前面已经判断了被引用的服务Bean在远程，所以这里仅仅是为了防止localServiceBean判断错误。
             exportServiceBeanIfNecessary(referencedBeanName); // If the referenced ServiceBean exits, export it immediately
+            //接着直接通过get()方法来创建一个代理，这get操作就会引入dubbo服务的订阅等相关内容。
             return referenceBean.get();
         }
     }
@@ -369,14 +458,19 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
                                                      Class<?> referencedType)
             throws Exception {
 
+        /**
+         * 首先判断缓存上是否有
+         */
         ReferenceBean<?> referenceBean = referenceBeanCache.get(referenceBeanName);
 
         if (referenceBean == null) {
+            //没有的话通过ReferenceBeanBuilder 创建一个referenceBean
             ReferenceBeanBuilder beanBuilder = ReferenceBeanBuilder
                     .create(attributes, applicationContext)
                     .interfaceClass(referencedType);
             referenceBean = beanBuilder.build();
             referenceBeanCache.put(referenceBeanName, referenceBean);
+            // 如果存在的话，需要怕判断ReferenceBean 对象持有的interfaceClass 是不是referencedType的类型或者子类型，不是抛异常。
         } else if (!referencedType.isAssignableFrom(referenceBean.getInterfaceClass())) {
             throw new IllegalArgumentException("reference bean name " + referenceBeanName + " has been duplicated, but interfaceClass " +
                     referenceBean.getInterfaceClass().getName() + " cannot be assigned to " + referencedType.getName());
@@ -386,6 +480,10 @@ public class ReferenceAnnotationBeanPostProcessor extends AbstractAnnotationBean
 
     private void cacheInjectedReferenceBean(ReferenceBean referenceBean,
                                             InjectionMetadata.InjectedElement injectedElement) {
+        /**
+         *
+         * 通过@DubboReference 是标注在成员上还是方法上，分别缓存
+         */
         if (injectedElement.getMember() instanceof Field) {
             injectedFieldReferenceBeanCache.put(injectedElement, referenceBean);
         } else if (injectedElement.getMember() instanceof Method) {

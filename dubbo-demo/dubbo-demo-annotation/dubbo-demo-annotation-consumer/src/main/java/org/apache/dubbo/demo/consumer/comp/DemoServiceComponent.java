@@ -25,7 +25,7 @@ import java.util.concurrent.CompletableFuture;
 @Component("demoServiceComponent")
 public class DemoServiceComponent implements DemoService {
 
-    @DubboReference(check = false, mock = "true")
+    @DubboReference(check = false, mock = "true" ,version = "2.0.0")
     private DemoService demoService;
 
     @Override

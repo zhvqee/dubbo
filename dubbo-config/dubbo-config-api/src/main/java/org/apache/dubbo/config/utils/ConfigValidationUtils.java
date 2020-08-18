@@ -256,13 +256,16 @@ public class ConfigValidationUtils {
      *                       side, it is the {@link Class} of the remote service interface that will be referenced
      */
     public static void checkMock(Class<?> interfaceClass, AbstractInterfaceConfig config) {
-        String mock = config.getMock();
+        String mock = config.getMock(); //获取mock 配置参数
         if (ConfigUtils.isEmpty(mock)) {
             return;
         }
-
+        // 配置 内部正常化
         String normalizedMock = MockInvoker.normalizeMock(mock);
+
+        //如果是return 打头
         if (normalizedMock.startsWith(RETURN_PREFIX)) {
+            //得到return 后面的内容
             normalizedMock = normalizedMock.substring(RETURN_PREFIX.length()).trim();
             try {
                 //Check whether the mock value is legal, if it is illegal, throw exception
@@ -271,10 +274,13 @@ public class ConfigValidationUtils {
                 throw new IllegalStateException("Illegal mock return in <dubbo:service/reference ... " +
                         "mock=\"" + mock + "\" />");
             }
+
+            //已throw 打头
         } else if (normalizedMock.startsWith(THROW_PREFIX)) {
             normalizedMock = normalizedMock.substring(THROW_PREFIX.length()).trim();
             if (ConfigUtils.isNotEmpty(normalizedMock)) {
                 try {
+                    // 验证后面的异常类是否可生成，这个类名要全限定名
                     //Check whether the mock value is legal
                     MockInvoker.getThrowable(normalizedMock);
                 } catch (Exception e) {
@@ -284,6 +290,7 @@ public class ConfigValidationUtils {
             }
         } else {
             //Check whether the mock class is a implementation of the interfaceClass, and if it has a default constructor
+            //验证是否是个mock对象
             MockInvoker.getMockObject(normalizedMock, interfaceClass);
         }
     }

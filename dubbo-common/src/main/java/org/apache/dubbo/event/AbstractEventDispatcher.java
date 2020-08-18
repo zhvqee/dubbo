@@ -118,6 +118,7 @@ public abstract class AbstractEventDispatcher implements EventDispatcher {
 
         // execute in sequential or parallel execution model
         executor.execute(() -> {
+            //通过 event的Class类型 得到该事件event的监听器
             sortedListeners(entry -> entry.getKey().isAssignableFrom(event.getClass()))
                     .forEach(listener -> {
                         if (listener instanceof ConditionalEventListener) {

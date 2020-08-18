@@ -180,6 +180,9 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
     public void checkRegistry() {
         convertRegistryIdsToRegistries();
 
+        /**
+         * 验证注册中心配置
+         */
         for (RegistryConfig registryConfig : registries) {
             if (!registryConfig.isValid()) {
                 throw new IllegalStateException("No registry config found or it's not a valid config! " +
@@ -242,6 +245,14 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
      * @param interfaceClass for provider side, it is the {@link Class} of the service that will be exported; for consumer
      *                       side, it is the {@link Class} of the remote service interface
      */
+    /**
+     * 验证Stub 类，本地存根类一般用于缓存，或者需要去调用远程的代理对象。
+     * 当为消费端创建远程代理Proxy后，如果有本地存根代理Stub ，会把该代理对象封装到Stub.
+     * Stub类也是要实现服务接口，然后在内部引用代理对象。
+     * 1、验证本地存根是否实现了服务接口
+     * 2、本地存根的构造器是否有一个是注入服务接口的。和dubbo内部的SPI的 Wraper类类似
+     * @param interfaceClass
+     */
     public void checkStubAndLocal(Class<?> interfaceClass) {
         verifyStubAndLocal(local, "Local", interfaceClass);
         verifyStubAndLocal(stub, "Stub", interfaceClass);
@@ -270,10 +281,16 @@ public abstract class AbstractInterfaceConfig extends AbstractMethodConfig {
         }
     }
 
+    /**
+     *
+     * 转化<dubbo:registry />为RegistryConfig
+     */
     private void convertRegistryIdsToRegistries() {
         computeValidRegistryIds();
+        //这里是没有找到<application /> <registry />
         if (StringUtils.isEmpty(registryIds)) {
             if (CollectionUtils.isEmpty(registries)) {
+                // 这里从ApplicationModel 配置里得到
                 List<RegistryConfig> registryConfigs = ApplicationModel.getConfigManager().getDefaultRegistries();
                 if (registryConfigs.isEmpty()) {
                     registryConfigs = new ArrayList<>();

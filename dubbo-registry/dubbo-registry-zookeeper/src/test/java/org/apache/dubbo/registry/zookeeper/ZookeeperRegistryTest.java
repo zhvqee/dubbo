@@ -53,11 +53,12 @@ public class ZookeeperRegistryTest {
 
     @BeforeEach
     public void setUp() throws Exception {
-        int zkServerPort = NetUtils.getAvailablePort();
+     //   int zkServerPort = NetUtils.getAvailablePort();
+        int zkServerPort = 2181;
         this.zkServer = new TestingServer(zkServerPort, true);
         this.zkServer.start();
 
-        this.registryUrl = URL.valueOf("zookeeper://localhost:" + zkServerPort);
+        this.registryUrl = URL.valueOf("zookeeper://106.52.187.48:" + zkServerPort);
         zookeeperRegistryFactory = new ZookeeperRegistryFactory();
         zookeeperRegistryFactory.setZookeeperTransporter(new CuratorZookeeperTransporter());
         this.zookeeperRegistry = (ZookeeperRegistry) zookeeperRegistryFactory.createRegistry(registryUrl);
