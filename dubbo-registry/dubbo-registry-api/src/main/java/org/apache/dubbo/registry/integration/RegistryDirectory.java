@@ -726,7 +726,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             this.providerUrl = providerUrl;
         }
 
-        public URL getProviderUrl() {
+        public URL getProviderUrl()  {
             return providerUrl;
         }
     }

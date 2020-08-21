@@ -9,7 +9,7 @@ import org.apache.dubbo.rpc.RpcException;
 
 import java.util.List;
 
-public class Protocal$Adaptive implements Protocol {
+public class Protocol$Adaptive implements Protocol {
 
     @Override
     public void destroy() {

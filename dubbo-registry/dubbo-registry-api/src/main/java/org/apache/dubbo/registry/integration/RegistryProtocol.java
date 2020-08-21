@@ -463,25 +463,42 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // new 一个服务目录，订阅服务类型为type 的 RegistryDirectory
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
+        // 设置注册中心
         directory.setRegistry(registry);
+
+        //设置协议，即Protocol$Adaptive
         directory.setProtocol(protocol);
         // all attributes of REFER_KEY
+
+        //获取订阅参数
         Map<String, String> parameters = new HashMap<String, String>(directory.getConsumerUrl().getParameters());
+
+        //构建订阅URL ,以consumer//打头
         URL subscribeUrl = new URL(CONSUMER_PROTOCOL, parameters.remove(REGISTER_IP_KEY), 0, type.getName(), parameters);
+
+        //把该url注册到注册中心上
         if (directory.isShouldRegister()) {
             directory.setRegisteredConsumerUrl(subscribeUrl);
             registry.register(directory.getRegisteredConsumerUrl());
         }
+        //设置路由链
         directory.buildRouterChain(subscribeUrl);
+
+        //重点，重中之重。这里订阅服务，并且会拉取远程服务invoker 到directory对象的urlInvokerMap成员中。
         directory.subscribe(toSubscribeUrl(subscribeUrl));
 
+        //由上面分析，得到是MockClusterInvoker
         Invoker<T> invoker = cluster.join(directory);
+
+        //查找注册协议监听器，没有设置为空
         List<RegistryProtocolListener> listeners = findRegistryProtocolListeners(url);
         if (CollectionUtils.isEmpty(listeners)) {
             return invoker;
         }
 
+        // 如果有其监听器进行监听器onRefer()调用，并返回RegistryInvokerWrapper包裹类型。
         RegistryInvokerWrapper<T> registryInvokerWrapper = new RegistryInvokerWrapper<>(directory, cluster, invoker, subscribeUrl);
         for (RegistryProtocolListener listener : listeners) {
             listener.onRefer(this, registryInvokerWrapper);

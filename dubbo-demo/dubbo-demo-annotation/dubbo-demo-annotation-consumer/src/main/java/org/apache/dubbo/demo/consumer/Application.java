@@ -36,9 +36,9 @@ public class Application {
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConsumerConfiguration.class);
         context.start();
-        DemoService service = context.getBean("demoServiceComponent", DemoServiceComponent.class);
+     /*   DemoService service = context.getBean("demoServiceComponent", DemoServiceComponent.class);
         String hello = service.sayHello("world");
-        System.out.println("result :" + hello);
+        System.out.println("result :" + hello);*/
     }
 
     @Configuration
@@ -47,7 +47,7 @@ public class Application {
     @ComponentScan(value = {"org.apache.dubbo.demo.consumer.comp"})
     static class ConsumerConfiguration {
 
-        @Bean
+        /*@Bean
         public RegistryConfig registryConfig() {
             RegistryConfig registryConfig = new RegistryConfig();
             // registryConfig.setAddress("zookeeper://106.52.187.48:2181?registry-type=service");
@@ -57,7 +57,7 @@ public class Application {
           //  parameters.put("registry_protocol", "zookeeper");
             registryConfig.setParameters(parameters);
             return registryConfig;
-        }
+        }*/
 
     }
 }
