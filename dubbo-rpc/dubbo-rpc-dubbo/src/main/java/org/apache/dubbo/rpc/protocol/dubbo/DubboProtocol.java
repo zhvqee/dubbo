@@ -359,6 +359,13 @@ public class DubboProtocol extends AbstractProtocol {
         return new DubboProtocolServer(server);
     }
 
+
+    /**
+     *
+     *  获取序列化类，放入optimizers
+     * @param url
+     * @throws RpcException
+     */
     private void optimizeSerialization(URL url) throws RpcException {
         String className = url.getParameter(OPTIMIZER_KEY, "");
         if (StringUtils.isEmpty(className) || optimizers.contains(className)) {
@@ -401,6 +408,10 @@ public class DubboProtocol extends AbstractProtocol {
         optimizeSerialization(url);
 
         // create rpc invoker.
+        /**
+         *
+         * 创建RPC DubboInvoker
+         */
         DubboInvoker<T> invoker = new DubboInvoker<T>(serviceType, url, getClients(url), invokers);
         invokers.add(invoker);
 
