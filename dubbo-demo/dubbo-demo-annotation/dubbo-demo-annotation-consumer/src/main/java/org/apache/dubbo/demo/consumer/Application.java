@@ -36,9 +36,9 @@ public class Application {
     public static void main(String[] args) {
         AnnotationConfigApplicationContext context = new AnnotationConfigApplicationContext(ConsumerConfiguration.class);
         context.start();
-     /*   DemoService service = context.getBean("demoServiceComponent", DemoServiceComponent.class);
+       DemoService service = context.getBean("demoServiceComponent", DemoServiceComponent.class);
         String hello = service.sayHello("world");
-        System.out.println("result :" + hello);*/
+        System.out.println("result :" + hello);
     }
 
     @Configuration

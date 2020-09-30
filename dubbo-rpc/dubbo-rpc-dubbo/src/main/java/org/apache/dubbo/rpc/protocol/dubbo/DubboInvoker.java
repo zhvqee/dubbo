@@ -87,6 +87,8 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
         inv.setAttachment(VERSION_KEY, version);
 
         ExchangeClient currentClient;
+
+        //多个tcp 链路，轮训调用
         if (clients.length == 1) {
             currentClient = clients[0];
         } else {
@@ -99,14 +101,18 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
                 boolean isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, false);
                 currentClient.send(inv, isSent);
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);
-            } else {
-                ExecutorService executor = getCallbackExecutor(getUrl(), inv);
+            } else { // 双端的，要进行恢复应答的。
+                ExecutorService executor = getCallbackExecutor(getUrl(), inv); //这里指定了业务线程池类型
+
+                // 这里进行了tcp 链路请求
                 CompletableFuture<AppResponse> appResponseFuture =
                         currentClient.request(inv, timeout, executor).thenApply(obj -> (AppResponse) obj);
+
                 // save for 2.6.x compatibility, for example, TraceFilter in Zipkin uses com.alibaba.xxx.FutureAdapter
                 FutureContext.getContext().setCompatibleFuture(appResponseFuture);
                 AsyncRpcResult result = new AsyncRpcResult(appResponseFuture, inv);
                 result.setExecutor(executor);
+
                 return result;
             }
         } catch (TimeoutException e) {

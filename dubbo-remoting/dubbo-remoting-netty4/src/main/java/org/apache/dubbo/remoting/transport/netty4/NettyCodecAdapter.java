@@ -83,11 +83,14 @@ final public class NettyCodecAdapter {
             do {
                 int saveReaderIndex = message.readerIndex();
                 Object msg = codec.decode(channel, message);
+
+                //如果数据还没有全部到达，这需要把读指针重新放到原来地方
                 if (msg == Codec2.DecodeResult.NEED_MORE_INPUT) {
                     message.readerIndex(saveReaderIndex);
                     break;
                 } else {
                     //is it possible to go here ?
+                    //没有读取到
                     if (saveReaderIndex == message.readerIndex()) {
                         throw new IOException("Decode without read data.");
                     }
@@ -95,7 +98,7 @@ final public class NettyCodecAdapter {
                         out.add(msg);
                     }
                 }
-            } while (message.readable());
+            } while (message.readable()); //判断消息是否可读
         }
     }
 }

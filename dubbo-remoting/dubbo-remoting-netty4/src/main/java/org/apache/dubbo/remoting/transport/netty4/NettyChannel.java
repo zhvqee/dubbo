@@ -145,6 +145,7 @@ final class NettyChannel extends AbstractChannel {
     }
 
     /**
+     *通过 netty 发送消息数据，如果设置了timeount,则在timeout 时间内没返回，抛异常RemotingException
      * Send message by netty and whether to wait the completion of the send.
      *
      * @param message message that need send.
@@ -159,7 +160,7 @@ final class NettyChannel extends AbstractChannel {
         boolean success = true;
         int timeout = 0;
         try {
-            ChannelFuture future = channel.writeAndFlush(message);
+            ChannelFuture future = channel.writeAndFlush(message); //这里会调用编码器进行编码，netty的功能
             if (sent) {
                 // wait timeout ms
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
